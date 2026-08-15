@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "抖音表情嗅探器",
+  "version": "1.0.0",
+  "description": "自动抓取抖音网页版的表情/贴图资源链接，支持收藏表情包与对话表情包双通道捕获、实时预览、一键下载。",
+  "author": "Kyler404",
+  "homepage_url": "https://github.com/Kyler404/douyin-snatcher",
+
+  "permissions": [
+    "webRequest",
+    "storage",
+    "downloads",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
+  ],
+
+  "host_permissions": [
+    "*://*.douyin.com/*",
+    "*://*.byteimg.com/*",
+    "*://*.douyinpic.com/*"
+  ],
+
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "byteimg_referer",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.douyin.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "抖音表情嗅探器",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

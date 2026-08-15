@@ -1,0 +1,36 @@
+# ── Chrome 扩展自动生成 ──
+_metadata/
+
+# ── 敏感文件 ──
+*.pem
+*.key
+
+# ── 构建产物 ──
+*.crx
+*.zip
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── Node ──
+node_modules/
+
+# ── 临时/中间产物 ──
+*.tmp
+*.log
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── 系统文件 ──
+.DS_Store
+Thumbs.db
+desktop.ini
