@@ -1,6 +1,9 @@
 # ── Chrome 扩展自动生成 ──
 _metadata/
 
+# ── 本地协作/记忆目录（非扩展运行所需）──
+.workbuddy/
+
 # ── 敏感文件 ──
 *.pem
 *.key

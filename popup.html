@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
+<html lang="zh-CN" data-page-node-id="d2CLuYpHl3RwBULGQlWJuC">
+<head data-page-node-id="e7b9ZNXUdLrRxvdiqq6nAR">
+  <meta charset="UTF-8" data-page-node-id="eZXRtt5v885FaY9ohNHUmM">
   <style>
     /* ── Design Tokens ── */
     :root {
@@ -300,14 +300,19 @@
     .zone-empty .icon { font-size: 26px; margin-bottom: 6px; opacity: .7; }
 
     /* ── 下载按钮（分区色）── */
+    .zone-actions {
+      display: flex;
+      gap: 8px;
+      padding: 0 14px 14px;
+    }
     .zone-btn {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 7px;
-      width: calc(100% - 28px);
+      flex: 1;
+      min-width: 0;
       height: 40px;
-      margin: 0 14px 14px;
       border: none;
       border-radius: 11px;
       font-size: 13px;
@@ -330,6 +335,8 @@
       box-shadow: 0 6px 20px rgba(139, 92, 246, .28);
     }
     .zone.chat .zone-btn:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 8px 26px rgba(139, 92, 246, .38); }
+
+    .zone-sub.out-rule { padding-top: 4px; opacity: .82; }
 
     /* ── 全局操作区 ── */
     .actions {
@@ -433,103 +440,109 @@
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
   </style>
 </head>
-<body>
+<body data-page-node-id="aLnRRLvUGiSaWwsJ2LJPhg">
 
-<header class="header anim">
-  <div class="brand">
-    <img class="logo" src="icons/icon128.png" alt="抖音表情嗅探器">
-    <div class="brand-text">
-      <h1>抖音表情嗅探器</h1>
-      <div class="sub">Douyin Snatcher</div>
+<header class="header anim" data-page-node-id="pon4Otvgt0XAlbjpJYCcZj">
+  <div class="brand" data-page-node-id="OCE07m1jUD2xyN063ZHAeD">
+    <img class="logo" src="icons/icon128.png" alt="抖音表情嗅探器" data-page-node-id="4lZIy0fMKoU7o3yFDGDLx3">
+    <div class="brand-text" data-page-node-id="HGHCd5Y5JpuPiFwTf0efTi">
+      <h1 data-page-node-id="HP6nerWRAMbDaA0spGW66Y">抖音表情嗅探器</h1>
+      <div class="sub" data-page-node-id="FPl1HcNhjcEiVQPQsTgCEk">Douyin Snatcher</div>
     </div>
   </div>
-  <div class="header-actions">
-    <button class="clear-icon" id="btnClearIcon" title="清空记录" aria-label="清空记录">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M10 11v6M14 11v6"/></svg>
+  <div class="header-actions" data-page-node-id="fjnNGxkMM1n00Ba6uIik6L">
+    <button class="clear-icon" id="btnClearIcon" title="清空记录" aria-label="清空记录" data-page-node-id="28vEUs5QOLtn8C4sSP6TeB">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="qODoJbBQqD0kZtem12fJnK"><path d="M4 7h16" data-page-node-id="TmO3CTnZzUnUcYNhTguK6e"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" data-page-node-id="BvXmrwrHAaJGXx9oyo0ROh"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" data-page-node-id="p6DFp7UnHWnb7iBkI4HmQm"/><path d="M10 11v6M14 11v6" data-page-node-id="BBj9hacepbxDCMRi5KLip3"/></svg>
     </button>
-    <div class="status-pill" id="pageStatus" data-state="wait">等待打开抖音</div>
+    <div class="status-pill" id="pageStatus" data-state="wait" data-page-node-id="jvhzOzbF2AH6itKSdBQBPw">等待打开抖音</div>
   </div>
 </header>
 
 <!-- 分区 A：个人收藏表情包（表情面板） -->
-<div class="zone panel anim">
-  <div class="zone-head">
-    <div class="zone-title">
-      <span class="zone-icon">💖</span>
+<div class="zone panel anim" data-page-node-id="0CXRUKu69ThI1mfKVKx6et">
+  <div class="zone-head" data-page-node-id="d87MjQlLuIHi5mMwja4Nqs">
+    <div class="zone-title" data-page-node-id="JZrHP1RopUCqGBFIgtJ5GB">
+      <span class="zone-icon" data-page-node-id="HmcQCdMG9KbWt7POVou5xW">💖</span>
       个人收藏表情包
-      <span class="badge" id="badgePanel">0</span>
+      <span class="badge" id="badgePanel" data-page-node-id="VTJTpFGhyjw1ijqkh6QJCG">0</span>
     </div>
-    <label class="switch">
-      <input type="checkbox" id="togglePanel">
-      <span class="slider"></span>
+    <label class="switch" data-page-node-id="EdieRLSAGULJAWwRXYVLqc">
+      <input type="checkbox" id="togglePanel" data-page-node-id="tWxcGH1hZrqo4CuJbDEzi4">
+      <span class="slider" data-page-node-id="vTm3YrHq5G0WzmAWOef27P"></span>
     </label>
   </div>
-  <div class="zone-sub">来源：表情面板 · <code>byteimg.com</code></div>
-  <div class="prev-grid" id="prevGridPanel"></div>
-  <div class="zone-empty" id="emptyPanel">
-    <div class="icon">💖</div>
-    打开抖音网页版表情面板<br>自动抓取收藏表情包
+  <div class="zone-sub" data-page-node-id="BAYpEl4mAJCeZoqmG38oWI">来源：表情面板 · <code data-page-node-id="DsQttLlkjvDcdEOVbw4yyt">byteimg.com</code></div>
+  <div class="zone-sub out-rule" data-page-node-id="luRGkOD8gaHtXNXMvEBEd6">下载即转 GIF · 长边 ≤1024px · 单文件 ≤3MB</div>
+  <div class="prev-grid" id="prevGridPanel" data-page-node-id="ADCIK4Wrs9F1qmbb7gW92r"></div>
+  <div class="zone-empty" id="emptyPanel" data-page-node-id="Ju23oZqLD8RnqRG8KYi73K">
+    <div class="icon" data-page-node-id="v9Y2628Oad2DfFWiPci8IJ">💖</div>
+    打开抖音网页版表情面板<br data-page-node-id="6WmbEprVi8T3gVnXuG6avE">自动抓取收藏表情包
   </div>
-  <button class="zone-btn" id="btnDownloadPanel">
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
-    <span id="btnPanelLabel">下载全部</span>
-  </button>
+  <div class="zone-actions" data-page-node-id="TsDPXEqE1uoHx6NCZjzZtb">
+    <button class="zone-btn" id="btnDownloadPanel" title="下载时自动转为 GIF：长边 ≤1024px，单文件 ≤3MB" data-page-node-id="Paj6Fg3lvlwKbA4sitIXEy">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="OjUZaVeggAA3qUYp8XDxfe"><path d="M12 3v11" data-page-node-id="JclFRcdiYWaoAP3372gTBO"/><path d="M7 10l5 5 5-5" data-page-node-id="fpFvCcHEnk8sCf4edfK4WI"/><path d="M4 19h16" data-page-node-id="XPanBH289IkhARvd8R62ue"/></svg>
+      <span id="btnPanelLabel" data-page-node-id="vqUTIEkR38DFU9P1iru5Fl">下载全部 · GIF</span>
+    </button>
+  </div>
 </div>
 
 <!-- 分区 B：对话表情包 -->
-<div class="zone chat anim">
-  <div class="zone-head">
-    <div class="zone-title">
-      <span class="zone-icon">💬</span>
+<div class="zone chat anim" data-page-node-id="Qebl5BrMTvPst9M1fT2Bpe">
+  <div class="zone-head" data-page-node-id="9GwQ1Zw50cYVSKsu0VM4c6">
+    <div class="zone-title" data-page-node-id="FdECLYaaIi2t80WawEPvmg">
+      <span class="zone-icon" data-page-node-id="vXduU3dXhKMl2by82gxqjo">💬</span>
       对话表情包
-      <span class="badge" id="badgeChat">0</span>
+      <span class="badge" id="badgeChat" data-page-node-id="fY4JT2DPD3QCeNSKEfX0QA">0</span>
     </div>
-    <label class="switch">
-      <input type="checkbox" id="toggleChat">
-      <span class="slider"></span>
+    <label class="switch" data-page-node-id="RDt60NQLwKi3G6BdUGbtfw">
+      <input type="checkbox" id="toggleChat" data-page-node-id="0P1tOvfko86vxGLyNMpwlk">
+      <span class="slider" data-page-node-id="T4IONIsJngzGhiUaCdFNFr"></span>
     </label>
   </div>
-  <div class="zone-sub">来源：聊天消息 · <code>douyinpic.com</code></div>
-  <div class="prev-grid" id="prevGridChat"></div>
-  <div class="zone-empty" id="emptyChat">
-    <div class="icon">💬</div>
-    打开任意对话收发表情<br>自动抓取对话表情包
+  <div class="zone-sub" data-page-node-id="5rotFArT3vhDiqr0EyTO1N">来源：聊天消息 · <code data-page-node-id="wlDnvMHcPyjOME8fZRUwIR">douyinpic.com</code></div>
+  <div class="zone-sub out-rule" data-page-node-id="ockzMUXJ6tcdZogxsdGZGO">下载即转 GIF · 长边 ≤1024px · 单文件 ≤3MB</div>
+  <div class="prev-grid" id="prevGridChat" data-page-node-id="GTs1zI0Le3fel9kWJNgEX3"></div>
+  <div class="zone-empty" id="emptyChat" data-page-node-id="pMEMzTplfEc25ulOhsAWHV">
+    <div class="icon" data-page-node-id="QBfyEapMLfjBl9VlaS6Haw">💬</div>
+    打开任意对话收发表情<br data-page-node-id="FlC4rWU1vYtBaI7yhzLPt4">自动抓取对话表情包
   </div>
-  <button class="zone-btn" id="btnDownloadChat">
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
-    <span id="btnChatLabel">下载全部</span>
-  </button>
+  <div class="zone-actions" data-page-node-id="hx8G8zBxCjlHPmSh5poHTq">
+    <button class="zone-btn" id="btnDownloadChat" title="下载时自动转为 GIF：长边 ≤1024px，单文件 ≤3MB" data-page-node-id="UR8v5iWP8PE0ghBrYEHmXV">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="pmXQA3YZNdbKLRs3CFkA3P"><path d="M12 3v11" data-page-node-id="r05vwxOf1QwH1Etj16pBG4"/><path d="M7 10l5 5 5-5" data-page-node-id="bxNTomZYJBR5HGFJZMjDQB"/><path d="M4 19h16" data-page-node-id="4ZZcV3Qn5ywtvptY88CQSK"/></svg>
+      <span id="btnChatLabel" data-page-node-id="8BzvlAKdsjy25pAKxsNsKp">下载全部 · GIF</span>
+    </button>
+  </div>
 </div>
 
 <!-- 全局操作区 -->
-<div class="actions anim">
-  <div class="head">
-    <span class="section-title">操作</span>
-    <span class="hint">作用于全部捕获</span>
+<div class="actions anim" data-page-node-id="QMtJjmydanTBO2mTnrSP88">
+  <div class="head" data-page-node-id="KwGTuK3XGakvog8nI1wtYm">
+    <span class="section-title" data-page-node-id="DgRQxt3nmtS2w7Vob8ag99">操作</span>
+    <span class="hint" data-page-node-id="RATiKBb4DC1xc30ES9poVb">作用于全部捕获</span>
   </div>
-  <div class="btn-grid">
-    <button class="btn" id="btnExport">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 9l4-4 4 4"/><path d="M4 17v3h16v-3"/></svg>
+  <div class="btn-grid" data-page-node-id="g4lIHB6uITNBB4j0P6AbAE">
+    <button class="btn" id="btnExport" data-page-node-id="yxTAYS3F4JRJQ6lq80scfA">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="cXDaWREZ1NLMaXIN4s3qkJ"><path d="M12 3v10" data-page-node-id="6sQaCHYoHTkofuLoeHVkXa"/><path d="M8 9l4-4 4 4" data-page-node-id="65ppoI5tpDdVku3SdRnqIo"/><path d="M4 17v3h16v-3" data-page-node-id="vQsbDlU6dR8mmQotP7M9mn"/></svg>
       导出列表
     </button>
-    <button class="btn" id="btnCopy">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+    <button class="btn" id="btnCopy" data-page-node-id="5v0j2SYZHFmXVid1yveDV8">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="AiJ8A2uh8DXMxkFbK7AAHw"><rect x="9" y="9" width="11" height="11" rx="2" data-page-node-id="ss790jGiZX1p3redoXBI3C"/><path d="M5 15V6a2 2 0 0 1 2-2h9" data-page-node-id="7zSpV5WKOIph9JnWoLPZNY"/></svg>
       复制全部
     </button>
-    <button class="btn" id="btnCopyNew">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/><circle cx="18.5" cy="5.5" r="2.6" fill="currentColor" stroke="none"/></svg>
+    <button class="btn" id="btnCopyNew" data-page-node-id="noQ7b41pteq6kEcFMOBFqN">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="llAruBjFfuIM09LlQkY2yi"><rect x="9" y="9" width="11" height="11" rx="2" data-page-node-id="uuzjtemc7enQ7epfUdHXwq"/><path d="M5 15V6a2 2 0 0 1 2-2h9" data-page-node-id="AfbNoF4n93yg4Asxnx80Ij"/><circle cx="18.5" cy="5.5" r="2.6" fill="currentColor" stroke="none" data-page-node-id="8jWU1EqxqgKncq7Mim9eIN"/></svg>
       仅复制新增
     </button>
-    <button class="btn" id="btnView">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/></svg>
+    <button class="btn" id="btnView" data-page-node-id="GJ5MkS6flH7hKaysOVnslM">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="4ofap7bCoItdDBOE3lmKWQ"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" data-page-node-id="iRSlZlvfWt4NsCtqbW1ytO"/><circle cx="12" cy="12" r="2.8" data-page-node-id="I9tBkEAQCyFbxMkczyHHz6"/></svg>
       URL 列表
     </button>
   </div>
 </div>
 
-<div class="url-list" id="urlList"></div>
+<div class="url-list" id="urlList" data-page-node-id="4Enn7DJbOGx0veXbJ7xHwy"></div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" data-page-node-id="miFPTn3hLBBG4ZfjWXFe08"></div>
 
 <script src="popup.js"></script>
 </body>

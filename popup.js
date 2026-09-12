@@ -4,6 +4,8 @@ const STORAGE_KEY = "snatched_urls";
 const LAST_EXPORT_KEY = "last_export_time";
 const PANEL_KEY = "panel_enabled"; // 收藏（面板）表情开关，默认关
 const CHAT_KEY = "chat_enabled";   // 对话表情开关，默认关
+const STATUS_KEY = "convert_status"; // 后台转换进度（后台工作页写入）
+const ACK_KEY = "convert_ack";       // 已提示过的转换结果时间戳
 
 // ── 元素引用 ──
 const pageStatus = document.getElementById("pageStatus");
@@ -25,6 +27,7 @@ const toast = document.getElementById("toast");
 // 预览网格的渲染签名（避免每 2s 重渲染打断悬停/下载）
 let lastPanelSig = "";
 let lastChatSig = "";
+let lastAck = 0; // 已经提示过的转换结果，避免每次刷新重复弹
 
 // ── 轻量 toast 提示（替代原生 alert）──
 let toastTimer = null;
@@ -40,15 +43,6 @@ function realUrl(url) {
   return url.replace(/&amp;/g, "&");
 }
 
-// 从 URL 生成合法文件名（去掉 Windows 不允许的 : 和 ~），dir 为下载子目录
-function cleanFilename(url, index, dir) {
-  const path = url.split("?")[0].split("/").pop();
-  let hash = path.split("~")[0] || path;
-  hash = hash.replace(/[^a-zA-Z0-9]/g, "").slice(0, 24) || "emoji";
-  const ext = /\.awebp/i.test(path) ? "awebp" : /\.webp/i.test(path) ? "webp" : "img";
-  return `${dir}/${String(index).padStart(3, "0")}_${hash}.${ext}`;
-}
-
 // ── 加载数据并渲染 ──
 async function refresh() {
   const result = await chrome.storage.local.get([
@@ -56,9 +50,16 @@ async function refresh() {
     LAST_EXPORT_KEY,
     PANEL_KEY,
     CHAT_KEY,
+    STATUS_KEY,
+    ACK_KEY,
   ]);
   const urls = result[STORAGE_KEY] || [];
   const lastExport = result[LAST_EXPORT_KEY] || 0;
+
+  // 后台转换进度（后台工作页写入，弹窗负责展示结果）
+  const st = result[STATUS_KEY] || null;
+  lastAck = result[ACK_KEY] || 0;
+  const busy = !!(st && st.running);
 
   // 开关状态（默认关闭：显式 true 才开启）
   const panelEnabled = result[PANEL_KEY] === true;
@@ -72,11 +73,17 @@ async function refresh() {
   badgePanel.textContent = panelUrls.length;
   badgeChat.textContent = chatUrls.length;
 
-  // 下载按钮标签带数量
-  btnPanelLabel.textContent = panelUrls.length ? `下载全部 (${panelUrls.length})` : "下载全部";
-  btnChatLabel.textContent = chatUrls.length ? `下载全部 (${chatUrls.length})` : "下载全部";
-  btnDownloadPanel.disabled = panelUrls.length === 0;
-  btnDownloadChat.disabled = chatUrls.length === 0;
+  // 下载按钮标签带数量；后台转换中时显示进度并禁用
+  if (busy) {
+    const label = `处理中 ${st.done}/${st.total}`;
+    btnPanelLabel.textContent = label;
+    btnChatLabel.textContent = label;
+  } else {
+    btnPanelLabel.textContent = panelUrls.length ? `下载全部 · GIF (${panelUrls.length})` : "下载全部 · GIF";
+    btnChatLabel.textContent = chatUrls.length ? `下载全部 · GIF (${chatUrls.length})` : "下载全部 · GIF";
+  }
+  btnDownloadPanel.disabled = busy || panelUrls.length === 0;
+  btnDownloadChat.disabled = busy || chatUrls.length === 0;
 
   // 开关状态同步到 UI
   togglePanel.checked = panelEnabled;
@@ -111,7 +118,43 @@ async function refresh() {
     renderGrid(prevGridChat, chatUrls);
   }
 
+  reportConvert(st, busy);
   return { urls, lastExport, panelUrls, chatUrls };
+}
+
+// ── 后台转换结果反馈 ──
+// 转换在后台工作页里跑，弹窗关掉也不中断，所以结果只能回来再看：
+// 进行中 → 按钮显示进度；刚结束 → toast 报成功/失败数；失败时清角标并提示原因。
+function reportConvert(st, busy) {
+  if (!st) return;
+  if (busy) return;
+
+  const clearBadge = () => {
+    try {
+      chrome.action.setBadgeText({ text: "" });
+    } catch {}
+  };
+
+  if (st.fatal && st.finishedAt > lastAck) {
+    showToast("转换失败：" + st.fatal);
+    clearBadge();
+    lastAck = st.finishedAt;
+    chrome.storage.local.set({ [ACK_KEY]: lastAck });
+    return;
+  }
+
+  if (st.finishedAt && st.finishedAt > lastAck) {
+    const ok = Math.max(0, (st.total || 0) - (st.failed || 0));
+    if (st.failed > 0) {
+      const first = (st.errors && st.errors[0] && st.errors[0].error) || "未知错误";
+      showToast(`成功 ${ok} 张，失败 ${st.failed} 张：${first}`);
+    } else if (st.total) {
+      showToast(`已下载 ${ok} 张 GIF → ${st.dir}/`);
+    }
+    clearBadge();
+    lastAck = st.finishedAt;
+    chrome.storage.local.set({ [ACK_KEY]: lastAck });
+  }
 }
 
 // ── 渲染预览网格（图片加载依赖 DNR 注入的 Referer 绕过 403）──
@@ -130,7 +173,7 @@ function renderGrid(container, items) {
     // 下载按钮（悬停显示）
     const dl = document.createElement("div");
     dl.className = "dl";
-    dl.title = "下载这张";
+    dl.title = "下载这张（自动转 GIF）";
     dl.textContent = "⬇";
     dl.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -155,28 +198,29 @@ function renderGrid(container, items) {
   });
 }
 
+// ── 交给后台工作页转换并下载 ──
+// 转码要取图、解码、编码 GIF，耗时不短；放后台标签页跑，弹窗关掉也不中断。
+function requestConvert(items, dir) {
+  chrome.runtime.sendMessage({ type: "convert_and_download", items, dir }).catch(() => {});
+}
+
 // ── 单张下载（DNR 自动带上 Referer，绕过防盗链）──
-async function downloadOne(url, index, dir) {
-  const rurl = realUrl(url);
-  const filename = cleanFilename(rurl, index, dir);
-  await chrome.downloads.download({ url: rurl, filename, saveAs: false });
+function downloadOne(url, index, dir) {
+  requestConvert([{ url: realUrl(url), index }], dir);
+  showToast("已开始处理，完成后自动下载");
 }
 
 // ── 分区批量下载 ──
-async function downloadAll(items, dir, label) {
+function downloadAll(items, dir) {
   if (items.length === 0) {
     showToast("该分区暂无捕获的资源");
     return;
   }
-  showToast(`正在下载 ${items.length} 张...`);
-  for (let i = 0; i < items.length; i++) {
-    try {
-      await downloadOne(items[i].url, i + 1, dir);
-    } catch (e) {
-      console.warn("下载失败:", items[i].url, e);
-    }
-  }
-  showToast(`已发起 ${items.length} 个下载，保存至 ${dir}/`);
+  requestConvert(
+    items.map((u, i) => ({ url: realUrl(u.url), index: i })),
+    dir
+  );
+  showToast(`已开始处理 ${items.length} 张，可关闭弹窗，完成后自动下载到 ${dir}/`);
 }
 
 // ── 开关切换（panel / chat 独立）──
@@ -341,11 +385,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 分区下载
   btnDownloadPanel.addEventListener("click", async () => {
     const { panelUrls } = await refresh();
-    await downloadAll(panelUrls, "douyin-emoticons", "收藏表情包");
+    downloadAll(panelUrls, "douyin-emoticons");
   });
   btnDownloadChat.addEventListener("click", async () => {
     const { chatUrls } = await refresh();
-    await downloadAll(chatUrls, "douyin-chat", "对话表情包");
+    downloadAll(chatUrls, "douyin-chat");
   });
 
   document.getElementById("btnExport").addEventListener("click", async () => {

@@ -175,6 +175,144 @@ function clearBySource(source, respond) {
   );
 }
 
+// ── 后台图片处理：转换 GPU/CPU 都很贵，弹窗撑不住 ──
+// 逐张 fetch → 解码 → 编码 GIF → 落盘，批量时几十秒起。弹窗一点别处就被销毁，
+// 所以这块放到独立的后台标签页 worker.html 里跑，它处理完会自己关闭。
+//
+// tabs.create() 只保证「标签页已创建」，不保证里面的模块脚本已执行完。
+// 直接发消息会撞上监听还没注册的窗口期，被静默丢弃 —— 所以必须先握手。
+const STATUS_KEY = "convert_status";
+
+let workerReady = false;
+let workerTabId = null;
+let creating = null;
+const readyWaiters = [];
+
+async function ensureWorker() {
+  if (workerReady && workerTabId != null) return;
+  if (!creating) {
+    creating = (async () => {
+      // SW 空闲会被回收，内存里的 workerTabId 随之丢失。
+      // 先从 storage 里找回它（worker 启动时写的）并定向 ping 一下，
+      // 页面还活着就直接复用 —— 连续下载两个分区只闪一个标签页。
+      if (workerTabId == null) {
+        const st = (await chrome.storage.local.get(STATUS_KEY))[STATUS_KEY] || {};
+        if (st.tabId != null) workerTabId = st.tabId;
+      }
+      if (workerTabId != null) {
+        if (await pingWorker(workerTabId)) {
+          workerReady = true;
+          return;
+        }
+        workerTabId = null;
+      }
+
+      const tab = await chrome.tabs.create({ url: "worker.html", active: false });
+      workerTabId = tab && tab.id;
+      // 禁止 Chrome 因内存压力把它丢弃，否则大批量任务会中途消失
+      if (workerTabId) {
+        try {
+          await chrome.tabs.update(workerTabId, { autoDiscardable: false });
+        } catch {}
+      }
+      if (await waitReady(12000)) return;
+      throw new Error("后台转换页面启动超时");
+    })().finally(() => {
+      creating = null;
+    });
+  }
+  await creating;
+}
+
+// 定向探活：比 waitReady 更可靠，因为它不依赖页面重启时的握手时机
+async function pingWorker(tabId) {
+  try {
+    const r = await chrome.tabs.sendMessage(tabId, { type: "worker_ping" });
+    return !!(r && r.ok);
+  } catch {
+    return false;
+  }
+}
+
+function markReady() {
+  workerReady = true;
+  while (readyWaiters.length) readyWaiters.shift()(true);
+}
+function markDead() {
+  workerReady = false;
+  workerTabId = null;
+}
+
+// worker 页跑完会自行关闭；不同步状态的话，下一批任务会发给一个已死的页面
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (workerTabId != null && tabId === workerTabId) markDead();
+});
+
+function waitReady(timeout = 10000) {
+  if (workerReady) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), timeout);
+    readyWaiters.push((ok) => {
+      clearTimeout(timer);
+      resolve(ok);
+    });
+  });
+}
+
+// ── 角标：让用户看得见后台进度与失败 ──
+function updateBadge(status) {
+  if (!chrome.action) return;
+  try {
+    if (status.running) {
+      const left = Math.max(0, (status.total || 0) - (status.done || 0));
+      chrome.action.setBadgeBackgroundColor({ color: "#fe2c55" });
+      chrome.action.setBadgeText({ text: left > 0 ? String(left) : "" });
+    } else if (status.failed > 0 || status.fatal) {
+      chrome.action.setBadgeBackgroundColor({ color: "#e11d48" });
+      chrome.action.setBadgeText({ text: "!" });
+    } else {
+      chrome.action.setBadgeText({ text: "" });
+    }
+  } catch {
+    /* 角标不可用不影响主流程 */
+  }
+}
+
+async function reportFatal(msg) {
+  const next = {
+    running: false,
+    fatal: String(msg),
+    finishedAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  await chrome.storage.local.set({ [STATUS_KEY]: next });
+  updateBadge(next);
+  console.warn("[background] 转换无法启动:", msg);
+}
+
+async function dispatchConvert(job) {
+  const send = () =>
+    chrome.runtime.sendMessage({
+      type: "worker_convert",
+      items: job.items || [],
+      dir: job.dir,
+    });
+
+  try {
+    await ensureWorker();
+    await send();
+  } catch {
+    // 工作页可能已被关闭或启动失败：标记失效后重建一次
+    markDead();
+    try {
+      await ensureWorker();
+      await send();
+    } catch (e2) {
+      await reportFatal("无法启动后台转换：" + ((e2 && e2.message) || e2));
+    }
+  }
+}
+
 // ── 监听来自 content script 的消息 ──
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "store_url") {
@@ -190,6 +328,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     keyOrder = [];
     itemByKey.clear();
     sendResponse({ ok: true });
+  } else if (msg.type === "convert_and_download") {
+    // 转交给后台工作页 worker.html；这里只负责开标签页并派发，不等它跑完
+    dispatchConvert({ items: msg.items || [], dir: msg.dir });
+    sendResponse({ ok: true });
+    return false;
+  } else if (msg.type === "worker_ready") {
+    markReady();
+    sendResponse({ ok: true });
+    return false;
+  } else if (msg.type === "convert_progress") {
+    updateBadge(msg.status || {});
+    sendResponse({ ok: true });
+    return false;
+  } else if (msg.type === "convert_status") {
+    chrome.storage.local.get([STATUS_KEY], (r) => sendResponse(r[STATUS_KEY] || null));
+    return true;
   }
   return true; // 保持消息通道开放
 });
