@@ -21,8 +21,37 @@ const btnPanelLabel = document.getElementById("btnPanelLabel");
 const btnChatLabel = document.getElementById("btnChatLabel");
 const btnDownloadPanel = document.getElementById("btnDownloadPanel");
 const btnDownloadChat = document.getElementById("btnDownloadChat");
+const btnSelectPanel = document.getElementById("btnSelectPanel");
+const btnSelectChat = document.getElementById("btnSelectChat");
 const urlList = document.getElementById("urlList");
 const toast = document.getElementById("toast");
+
+// ── 分区状态：当前条目 + 多选集合 ──
+// 选中项按 URL 记，网格因新抓到图而重渲染时勾选不会丢；
+// anchor 是上一次点选的位置，Shift+点击时从它连选到当前。
+const zones = {
+  panel: {
+    grid: prevGridPanel,
+    btn: btnDownloadPanel,
+    label: btnPanelLabel,
+    selBtn: btnSelectPanel,
+    dir: "douyin-emoticons",
+    items: [],
+    selected: new Set(),
+    anchor: -1,
+  },
+  chat: {
+    grid: prevGridChat,
+    btn: btnDownloadChat,
+    label: btnChatLabel,
+    selBtn: btnSelectChat,
+    dir: "douyin-chat",
+    items: [],
+    selected: new Set(),
+    anchor: -1,
+  },
+};
+let lastStatus = null; // 最近一次读到的后台转换进度
 
 // 预览网格的渲染签名（避免每 2s 重渲染打断悬停/下载）
 let lastPanelSig = "";
@@ -73,17 +102,10 @@ async function refresh() {
   badgePanel.textContent = panelUrls.length;
   badgeChat.textContent = chatUrls.length;
 
-  // 下载按钮标签带数量；后台转换中时显示进度并禁用
-  if (busy) {
-    const label = `处理中 ${st.done}/${st.total}`;
-    btnPanelLabel.textContent = label;
-    btnChatLabel.textContent = label;
-  } else {
-    btnPanelLabel.textContent = panelUrls.length ? `下载全部 · GIF (${panelUrls.length})` : "下载全部 · GIF";
-    btnChatLabel.textContent = chatUrls.length ? `下载全部 · GIF (${chatUrls.length})` : "下载全部 · GIF";
-  }
-  btnDownloadPanel.disabled = busy || panelUrls.length === 0;
-  btnDownloadChat.disabled = busy || chatUrls.length === 0;
+  // 同步分区条目，剔除已不存在的勾选（例如关开关清空了记录）
+  lastStatus = st;
+  setZoneItems(zones.panel, panelUrls);
+  setZoneItems(zones.chat, chatUrls);
 
   // 开关状态同步到 UI
   togglePanel.checked = panelEnabled;
@@ -110,13 +132,16 @@ async function refresh() {
   const panelSig = panelUrls.length + "|" + (panelUrls[panelUrls.length - 1]?.url || "");
   if (panelSig !== lastPanelSig) {
     lastPanelSig = panelSig;
-    renderGrid(prevGridPanel, panelUrls);
+    renderGrid(zones.panel);
   }
   const chatSig = chatUrls.length + "|" + (chatUrls[chatUrls.length - 1]?.url || "");
   if (chatSig !== lastChatSig) {
     lastChatSig = chatSig;
-    renderGrid(prevGridChat, chatUrls);
+    renderGrid(zones.chat);
   }
+
+  updateZoneControls(zones.panel);
+  updateZoneControls(zones.chat);
 
   reportConvert(st, busy);
   return { urls, lastExport, panelUrls, chatUrls };
@@ -158,17 +183,29 @@ function reportConvert(st, busy) {
 }
 
 // ── 渲染预览网格（图片加载依赖 DNR 注入的 Referer 绕过 403）──
-function renderGrid(container, items) {
+// 左上角勾选框：点一下选/取消，Shift+点击连选；点图本身仍是新标签放大。
+function renderGrid(zone) {
+  const container = zone.grid;
   container.innerHTML = "";
-  items.forEach((item, i) => {
-    const idx = i + 1;
+  zone.items.forEach((item, i) => {
     const cell = document.createElement("div");
     cell.className = "thumb";
+    cell.classList.toggle("selected", zone.selected.has(item.url));
 
     const img = document.createElement("img");
     img.src = realUrl(item.url); // 真实 & 分隔的 URL
     img.loading = "lazy";
     img.addEventListener("error", () => cell.classList.add("broken"));
+
+    // 勾选框
+    const pick = document.createElement("div");
+    pick.className = "pick";
+    pick.title = "选择（Shift+点击可连选）";
+    pick.setAttribute("role", "checkbox");
+    pick.addEventListener("click", (e) => {
+      e.stopPropagation();
+      togglePick(zone, i, e.shiftKey);
+    });
 
     // 下载按钮（悬停显示）
     const dl = document.createElement("div");
@@ -177,8 +214,7 @@ function renderGrid(container, items) {
     dl.textContent = "⬇";
     dl.addEventListener("click", (e) => {
       e.stopPropagation();
-      const dir = item.source === "chat" ? "douyin-chat" : "douyin-emoticons";
-      downloadOne(item.url, idx, dir);
+      downloadOne(item.url, i, zone.dir);
     });
 
     // 点击放大（新标签打开）
@@ -192,10 +228,78 @@ function renderGrid(container, items) {
     fail.textContent = "⚠️";
 
     cell.appendChild(img);
+    cell.appendChild(pick);
     cell.appendChild(dl);
     cell.appendChild(fail);
     container.appendChild(cell);
   });
+  syncPickState(zone);
+}
+
+// ── 多选 ──
+function setZoneItems(zone, items) {
+  zone.items = items;
+  const alive = new Set(items.map((u) => u.url));
+  for (const url of zone.selected) if (!alive.has(url)) zone.selected.delete(url);
+  if (zone.anchor >= items.length) zone.anchor = -1;
+}
+
+function togglePick(zone, i, range) {
+  const url = zone.items[i]?.url;
+  if (!url) return;
+  const on = !zone.selected.has(url);
+  if (range && zone.anchor >= 0 && zone.anchor < zone.items.length) {
+    // Shift 连选：从上次点选的位置到这里，统一设成这次点击后的状态
+    const [a, b] = zone.anchor < i ? [zone.anchor, i] : [i, zone.anchor];
+    for (let k = a; k <= b; k++) {
+      const u = zone.items[k].url;
+      if (on) zone.selected.add(u);
+      else zone.selected.delete(u);
+    }
+  } else if (on) {
+    zone.selected.add(url);
+  } else {
+    zone.selected.delete(url);
+  }
+  zone.anchor = i;
+  syncPickState(zone);
+  updateZoneControls(zone);
+}
+
+function toggleSelectAll(zone) {
+  const all = zone.items.length > 0 && zone.selected.size === zone.items.length;
+  zone.selected.clear();
+  if (!all) zone.items.forEach((u) => zone.selected.add(u.url));
+  zone.anchor = -1;
+  syncPickState(zone);
+  updateZoneControls(zone);
+}
+
+// 只改勾选样式，不重建 DOM（避免图片重新加载闪烁）
+function syncPickState(zone) {
+  const cells = zone.grid.children;
+  for (let i = 0; i < cells.length; i++) {
+    const on = !!zone.items[i] && zone.selected.has(zone.items[i].url);
+    cells[i].classList.toggle("selected", on);
+    const pick = cells[i].querySelector(".pick");
+    if (pick) pick.setAttribute("aria-checked", String(on));
+  }
+}
+
+// 按钮文案与可用状态：后台转换中显示进度；否则显示已选数量
+function updateZoneControls(zone) {
+  const st = lastStatus;
+  const busy = !!(st && st.running);
+  const n = zone.items.length;
+  const k = zone.selected.size;
+  if (busy) {
+    zone.label.textContent = `处理中 ${st.done}/${st.total}`;
+  } else {
+    zone.label.textContent = k ? `下载所选 · GIF (${k})` : "下载所选 · GIF";
+  }
+  zone.btn.disabled = busy || k === 0;
+  zone.selBtn.textContent = n > 0 && k === n ? "取消全选" : "全选";
+  zone.selBtn.disabled = n === 0;
 }
 
 // ── 交给后台工作页转换并下载 ──
@@ -210,17 +314,35 @@ function downloadOne(url, index, dir) {
   showToast("已开始处理，完成后自动下载");
 }
 
-// ── 分区批量下载 ──
-function downloadAll(items, dir) {
-  if (items.length === 0) {
-    showToast("该分区暂无捕获的资源");
+// ── 本地时间戳，作批次子目录名：2026-11-21_121500 ──
+function batchStamp(d = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_` +
+    `${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+  );
+}
+
+// ── 下载所选 ──
+// 每批单独建一个带时间的子目录，避免多次下载混在一起、序号文件名互相冲突。
+// 文件名序号沿用预览网格里的位置，方便对照。
+function downloadSelected(zone) {
+  const picked = [];
+  zone.items.forEach((u, i) => {
+    if (zone.selected.has(u.url)) picked.push({ url: realUrl(u.url), index: i });
+  });
+  if (picked.length === 0) {
+    showToast("请先勾选要下载的表情，或点「全选」");
     return;
   }
-  requestConvert(
-    items.map((u, i) => ({ url: realUrl(u.url), index: i })),
-    dir
-  );
-  showToast(`已开始处理 ${items.length} 张，可关闭弹窗，完成后自动下载到 ${dir}/`);
+  const batchDir = `${zone.dir}/${batchStamp()}`;
+  requestConvert(picked, batchDir);
+  // 已提交的勾选清掉，免得下次误把同一批再下一遍
+  zone.selected.clear();
+  zone.anchor = -1;
+  syncPickState(zone);
+  updateZoneControls(zone);
+  showToast(`已开始处理 ${picked.length} 张，可关闭弹窗，完成后自动下载到 ${batchDir}/`);
 }
 
 // ── 开关切换（panel / chat 独立）──
@@ -382,15 +504,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   togglePanel.addEventListener("change", (e) => setCapture(PANEL_KEY, e.target.checked));
   toggleChat.addEventListener("change", (e) => setCapture(CHAT_KEY, e.target.checked));
 
-  // 分区下载
+  // 分区：下载所选 / 全选
   btnDownloadPanel.addEventListener("click", async () => {
-    const { panelUrls } = await refresh();
-    downloadAll(panelUrls, "douyin-emoticons");
+    await refresh(); // 先同步最新条目，剔除已失效的勾选
+    downloadSelected(zones.panel);
   });
   btnDownloadChat.addEventListener("click", async () => {
-    const { chatUrls } = await refresh();
-    downloadAll(chatUrls, "douyin-chat");
+    await refresh();
+    downloadSelected(zones.chat);
   });
+  btnSelectPanel.addEventListener("click", () => toggleSelectAll(zones.panel));
+  btnSelectChat.addEventListener("click", () => toggleSelectAll(zones.chat));
 
   document.getElementById("btnExport").addEventListener("click", async () => {
     const { urls } = await refresh();

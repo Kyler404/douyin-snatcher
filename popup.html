@@ -287,6 +287,31 @@
     .thumb.broken .fail { display: flex; }
     .thumb.broken img { visibility: hidden; }
 
+    /* ── 多选勾选框 ── */
+    .thumb .pick {
+      position: absolute;
+      left: 4px; top: 4px;
+      width: 20px; height: 20px;
+      border-radius: 6px;
+      border: 1.5px solid rgba(255, 255, 255, .7);
+      background: rgba(0, 0, 0, .38);
+      color: #fff;
+      font-size: 12px; font-weight: 700; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2;
+      transition: background .18s var(--std), border-color .18s var(--std), transform .2s var(--spring);
+    }
+    .thumb .pick::after { content: "✓"; opacity: 0; transition: opacity .15s var(--std); }
+    .thumb .pick:hover { transform: scale(1.12); border-color: #fff; }
+    .thumb.selected { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -2px; }
+    .thumb.selected .pick {
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    }
+    .thumb.selected .pick::after { opacity: 1; }
+    .zone.chat .thumb.selected { border-color: var(--violet); outline-color: var(--violet); }
+    .zone.chat .thumb.selected .pick { background: linear-gradient(135deg, var(--violet-2), var(--violet)); }
+
     /* ── 分区空态 ── */
     .zone-empty {
       display: none;
@@ -335,6 +360,23 @@
       box-shadow: 0 6px 20px rgba(139, 92, 246, .28);
     }
     .zone.chat .zone-btn:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 8px 26px rgba(139, 92, 246, .38); }
+
+    /* 次级按钮：全选 / 取消全选 */
+    .zone .zone-actions .zone-btn.ghost {
+      flex: 0 0 auto;
+      min-width: 84px;
+      padding: 0 14px;
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      box-shadow: none;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .zone .zone-actions .zone-btn.ghost:hover:not(:disabled) {
+      filter: none;
+      background: var(--surface-hover);
+      box-shadow: none;
+    }
 
     .zone-sub.out-rule { padding-top: 4px; opacity: .82; }
 
@@ -479,9 +521,10 @@
     打开抖音网页版表情面板<br data-page-node-id="6WmbEprVi8T3gVnXuG6avE">自动抓取收藏表情包
   </div>
   <div class="zone-actions" data-page-node-id="TsDPXEqE1uoHx6NCZjzZtb">
-    <button class="zone-btn" id="btnDownloadPanel" title="下载时自动转为 GIF：长边 ≤1024px，单文件 ≤3MB" data-page-node-id="Paj6Fg3lvlwKbA4sitIXEy">
+    <button class="zone-btn ghost" id="btnSelectPanel" title="全选 / 取消全选本分区">全选</button>
+    <button class="zone-btn" id="btnDownloadPanel" title="下载勾选的表情，自动转为 GIF：长边 ≤1024px，单文件 ≤3MB" data-page-node-id="Paj6Fg3lvlwKbA4sitIXEy">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="OjUZaVeggAA3qUYp8XDxfe"><path d="M12 3v11" data-page-node-id="JclFRcdiYWaoAP3372gTBO"/><path d="M7 10l5 5 5-5" data-page-node-id="fpFvCcHEnk8sCf4edfK4WI"/><path d="M4 19h16" data-page-node-id="XPanBH289IkhARvd8R62ue"/></svg>
-      <span id="btnPanelLabel" data-page-node-id="vqUTIEkR38DFU9P1iru5Fl">下载全部 · GIF</span>
+      <span id="btnPanelLabel" data-page-node-id="vqUTIEkR38DFU9P1iru5Fl">下载所选 · GIF</span>
     </button>
   </div>
 </div>
@@ -507,9 +550,10 @@
     打开任意对话收发表情<br data-page-node-id="FlC4rWU1vYtBaI7yhzLPt4">自动抓取对话表情包
   </div>
   <div class="zone-actions" data-page-node-id="hx8G8zBxCjlHPmSh5poHTq">
-    <button class="zone-btn" id="btnDownloadChat" title="下载时自动转为 GIF：长边 ≤1024px，单文件 ≤3MB" data-page-node-id="UR8v5iWP8PE0ghBrYEHmXV">
+    <button class="zone-btn ghost" id="btnSelectChat" title="全选 / 取消全选本分区">全选</button>
+    <button class="zone-btn" id="btnDownloadChat" title="下载勾选的表情，自动转为 GIF：长边 ≤1024px，单文件 ≤3MB" data-page-node-id="UR8v5iWP8PE0ghBrYEHmXV">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="pmXQA3YZNdbKLRs3CFkA3P"><path d="M12 3v11" data-page-node-id="r05vwxOf1QwH1Etj16pBG4"/><path d="M7 10l5 5 5-5" data-page-node-id="bxNTomZYJBR5HGFJZMjDQB"/><path d="M4 19h16" data-page-node-id="4ZZcV3Qn5ywtvptY88CQSK"/></svg>
-      <span id="btnChatLabel" data-page-node-id="8BzvlAKdsjy25pAKxsNsKp">下载全部 · GIF</span>
+      <span id="btnChatLabel" data-page-node-id="8BzvlAKdsjy25pAKxsNsKp">下载所选 · GIF</span>
     </button>
   </div>
 </div>
