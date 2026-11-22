@@ -313,6 +313,63 @@ async function dispatchConvert(job) {
   }
 }
 
+// ── 下载路径保护：防止其他扩展的 onDeterminingFilename 把子目录和文件名冲掉 ──
+// Chromium 中 downloads.download({ filename }) 只算最低优先级的「创建者建议名」。
+// 一旦浏览器里装了任何监听 chrome.downloads.onDeterminingFilename 的扩展（如下载管理器），
+// 对方只要回调了 suggest({ filename: item.filename })，Chromium 就会丢弃 download() 传的子目录和文件名，
+// 退回成 blob URL 的 UUID（如 3d59637b-....gif）并直接落到默认下载根目录。
+// 因此本扩展自己也必须监听 onDeterminingFilename，对本扩展发起的下载显式 suggest 目标相对路径。
+const pendingDownloads = new Map(); // url -> { filename, time }
+const pendingQueue = [];            // 兜底队列（按发起顺序匹配 byExtensionId）
+const PENDING_TTL_MS = 300000;      // 5 分钟过期清理
+
+function prunePending(now = Date.now()) {
+  for (const [k, v] of pendingDownloads) {
+    if (now - v.time > PENDING_TTL_MS) pendingDownloads.delete(k);
+  }
+  while (pendingQueue.length && now - pendingQueue[0].time > PENDING_TTL_MS) {
+    pendingQueue.shift();
+  }
+}
+
+function rememberDownload(url, filename) {
+  if (!url || !filename) return;
+  const now = Date.now();
+  prunePending(now);
+  const entry = { url, filename, time: now };
+  pendingDownloads.set(url, entry);
+  pendingQueue.push(entry);
+}
+
+function consumeDownload(item) {
+  prunePending();
+  let entry =
+    pendingDownloads.get(item.url) ||
+    (item.finalUrl && pendingDownloads.get(item.finalUrl));
+  if (!entry && item.byExtensionId === chrome.runtime.id && pendingQueue.length) {
+    entry = pendingQueue.shift();
+  }
+  if (!entry) return null;
+  pendingDownloads.delete(entry.url);
+  pendingDownloads.delete(item.url);
+  if (item.finalUrl) pendingDownloads.delete(item.finalUrl);
+  const idx = pendingQueue.indexOf(entry);
+  if (idx >= 0) pendingQueue.splice(idx, 1);
+  return entry;
+}
+
+if (chrome.downloads && chrome.downloads.onDeterminingFilename) {
+  chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+    const entry = consumeDownload(item);
+    if (entry) {
+      suggest({ filename: entry.filename, conflictAction: "uniquify" });
+      return;
+    }
+    // 非本扩展登记的下载：不传参，交还给浏览器或其他扩展默认处理
+    suggest();
+  });
+}
+
 // ── 监听来自 content script 的消息 ──
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "store_url") {
@@ -328,6 +385,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     keyOrder = [];
     itemByKey.clear();
     sendResponse({ ok: true });
+  } else if (msg.type === "prepare_download") {
+    rememberDownload(msg.url, msg.filename);
+    sendResponse({ ok: true });
+    return false;
   } else if (msg.type === "convert_and_download") {
     // 转交给后台工作页 worker.html；这里只负责开标签页并派发，不等它跑完
     dispatchConvert({ items: msg.items || [], dir: msg.dir });

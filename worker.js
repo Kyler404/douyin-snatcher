@@ -67,9 +67,16 @@ async function runJob(job) {
       const out = await processToGif(buf);
       const blob = new Blob([out.data], { type: "image/gif" });
       blobUrl = URL.createObjectURL(blob);
+      const targetName = `${dir}/${gifName(item.url, item.index ?? i)}`;
+      // 先向 background 登记目标相对路径，由 onDeterminingFilename 兜底写入子目录，
+      // 防止被其他扩展的下载监听重置成默认目录下的 <uuid>.gif
+      await chrome.runtime
+        .sendMessage({ type: "prepare_download", url: blobUrl, filename: targetName })
+        .catch(() => {});
       await chrome.downloads.download({
         url: blobUrl,
-        filename: `${dir}/${gifName(item.url, item.index ?? i)}`,
+        filename: targetName,
+        conflictAction: "uniquify",
         saveAs: false,
       });
     } catch (e) {

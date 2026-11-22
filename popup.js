@@ -433,17 +433,25 @@ async function exportAndDownload(urls) {
 
   // 下载 JSON
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const jsonName = `douyin-resources-${timestamp}.json`;
+  const txtName = `douyin-resources-${timestamp}.txt`;
+  await chrome.runtime
+    .sendMessage({ type: "prepare_download", url: blobUrl, filename: jsonName })
+    .catch(() => {});
   await chrome.downloads.download({
     url: blobUrl,
-    filename: `douyin-resources-${timestamp}.json`,
+    filename: jsonName,
     saveAs: true,
   });
 
   // 同时下载 TXT
   setTimeout(async () => {
+    await chrome.runtime
+      .sendMessage({ type: "prepare_download", url: txtUrl, filename: txtName })
+      .catch(() => {});
     await chrome.downloads.download({
       url: txtUrl,
-      filename: `douyin-resources-${timestamp}.txt`,
+      filename: txtName,
       saveAs: true,
     });
   }, 500);
