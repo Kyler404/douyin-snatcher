@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "抖音表情嗅探器",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "自动抓取抖音网页版的表情/贴图资源链接，支持收藏表情包与对话表情包双通道捕获、实时预览、一键下载。",
   "author": "Kyler404",
   "homepage_url": "https://github.com/Kyler404/douyin-snatcher",
